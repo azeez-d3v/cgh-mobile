@@ -3,9 +3,6 @@
     "name": "CGH Mobile",
     "slug": "cgh-mobile",
     "version": "1.0.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "scheme": "cghmobile",
     "orientation": "portrait",
     "icon": "./assets/icon-v2.png",
@@ -15,7 +12,13 @@
     },
     "android": {
       "package": "com.azeezd3v.cghmobile",
-      "versionCode": 1,
+      "versionCode": 1000000,
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FDE7EF",
@@ -29,21 +32,9 @@
     "plugins": [
       "expo-image",
       "expo-font",
-      "expo-splash-screen"
-    ],
-    "androidStatusBar": {
-      "backgroundColor": "#00000000",
-      "translucent": true,
-      "barStyle": "dark-content"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "891d34df-7515-4aa1-835b-30d0070e363d"
-      }
-    },
-    "owner": "azeeez",
-    "updates": {
-      "url": "https://u.expo.dev/891d34df-7515-4aa1-835b-30d0070e363d"
-    }
+      "expo-splash-screen",
+      "react-native-ota-hot-update",
+      "./plugins/withAndroidReleaseSigning"
+    ]
   }
 }

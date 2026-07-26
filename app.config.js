@@ -1,4 +1,10 @@
 const appJson = require('./app.json');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const otaPublicKey = fs
+  .readFileSync(path.join(__dirname, 'config', 'ota-public-key.txt'), 'utf8')
+  .trim();
 
 module.exports = ({ config }) => {
   const baseConfig = appJson.expo;
@@ -17,6 +23,10 @@ module.exports = ({ config }) => {
     extra: {
       ...baseConfig.extra,
       appEnvironment,
+      ota: {
+        baseUrl: process.env.EXPO_PUBLIC_OTA_BASE_URL || 'https://azeez-d3v.github.io/cgh-mobile-downloads/ota',
+        publicKey: process.env.EXPO_PUBLIC_OTA_PUBLIC_KEY || otaPublicKey,
+      },
     },
   };
 };

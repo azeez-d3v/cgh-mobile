@@ -1,0 +1,61 @@
+name: Build Development APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: development-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    environment: development
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      APP_VARIANT: development
+      EXPO_PUBLIC_APP_ENV: development
+      EXPO_NO_DOTENV: "1"
+      ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,armeabi-v7a
+    steps:
+      - name: Checkout development
+        uses: actions/checkout@v6
+        with:
+          ref: development
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Install and validate
+        run: |
+          npm ci
+          npm run validate
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build development APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload development APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: CGH-Mobile-Development
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

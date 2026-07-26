@@ -31,3 +31,10 @@ jobs:
 
       - name: Validate project
         run: npm run validate
+
+      - name: Validate native generation
+        env:
+          APP_VARIANT: production
+          EXPO_PUBLIC_APP_ENV: production
+          EXPO_NO_DOTENV: "1"
+        run: npx expo prebuild --platform android --clean --no-install

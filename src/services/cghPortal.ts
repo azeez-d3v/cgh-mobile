@@ -61,8 +61,13 @@ export class CghPortalClient {
 
   constructor(options?: { useWebProxy?: boolean; proxyBaseUrl?: string }) {
     const configuredProxy = configuredProxyBaseUrl();
-    this.useWebProxy = options?.useWebProxy ?? (isBrowserWeb() || Boolean(configuredProxy));
-    this.proxyBaseUrl = options?.proxyBaseUrl ?? configuredProxy ?? defaultProxyBaseUrl();
+    this.useWebProxy =
+      options?.useWebProxy ??
+      (isDevelopmentPreview() && (isBrowserWeb() || Boolean(configuredProxy)));
+    this.proxyBaseUrl =
+      options?.proxyBaseUrl ??
+      configuredProxy ??
+      (this.useWebProxy ? defaultProxyBaseUrl() : '');
   }
 
   get cookieHeader() {
@@ -333,6 +338,13 @@ function readLoginFailure(html: string) {
 
 function isBrowserWeb() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+function isDevelopmentPreview() {
+  return (
+    typeof process !== 'undefined' &&
+    process.env.EXPO_PUBLIC_APP_ENV === 'development'
+  );
 }
 
 function defaultProxyBaseUrl() {

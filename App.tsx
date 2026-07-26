@@ -25,6 +25,7 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
+  CloudDownload,
   Eye,
   EyeOff,
   FileText,
@@ -51,6 +52,7 @@ import { PersonalInfoOverview } from './src/components/PersonalInfoOverview';
 import { ChecklistOverview } from './src/components/ChecklistOverview';
 import { AcademicRecordsOverview } from './src/components/AcademicRecordsOverview';
 import { LegalDocumentModal } from './src/components/LegalDocumentModal';
+import { OtaUpdateModal } from './src/components/OtaUpdateModal';
 import { EmptyState, Section } from './src/components/Section';
 import { ModuleCard } from './src/components/ModuleCard';
 import { StudentHeader } from './src/components/StudentHeader';
@@ -60,6 +62,8 @@ import { previewModule, previewStudent } from './src/services/previewData';
 import { cacheModule, cacheStudent, getCachedModule, getCachedStudent } from './src/services/portalCache';
 import type { PortalModuleData, PortalModuleKey, StudentSummary } from './src/types';
 import type { LegalDocumentKey } from './src/content/legal';
+import { useOtaUpdate } from './src/ota/useOtaUpdate';
+import type { OtaController } from './src/ota/types';
 import { colors, gradients } from './src/theme/colors';
 import { fontFamily } from './src/theme/typography';
 import { radii } from './src/theme/spacing';
@@ -83,6 +87,7 @@ const DEV_PREVIEW_AVAILABLE = __DEV__;
 
 export default function App() {
   const [fontsLoaded] = useFonts({ NunitoSans_400Regular, NunitoSans_600SemiBold, NunitoSans_700Bold, NunitoSans_900Black });
+  const ota = useOtaUpdate();
   const netInfo = useNetInfo();
   const initialPreview = useRef(readWebPreviewRoute()).current;
   const clientRef = useRef(new CghPortalClient());
@@ -287,6 +292,7 @@ export default function App() {
               setError(undefined);
             }}
             onLogout={() => setLogoutDialogOpen(true)}
+            ota={ota}
           />
         ) : (
           <LoginScreen loading={loginLoading} error={error} onLogin={handleLogin} onPreview={handlePreview} />
@@ -296,6 +302,7 @@ export default function App() {
           onCancel={() => setLogoutDialogOpen(false)}
           onConfirm={handleLogout}
         />
+        <OtaUpdateModal ota={ota} />
       </View>
     </SafeAreaProvider>
   );
@@ -525,6 +532,7 @@ function DashboardScreen({
   onSignInAgain,
   onBack,
   onLogout,
+  ota,
 }: {
   activeTab: DashboardTab;
   setActiveTab: (tab: DashboardTab) => void;
@@ -541,6 +549,7 @@ function DashboardScreen({
   onSignInAgain: () => void;
   onBack: () => void;
   onLogout: () => void;
+  ota: OtaController;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -588,6 +597,7 @@ function DashboardScreen({
           onOpenModule={onOpenModule}
           onSignInAgain={onSignInAgain}
           onLogout={onLogout}
+          ota={ota}
         />
       </SafeAreaView>
       <FloatingNav activeTab={activeTab} onSelect={setActiveTab} bottom={insets.bottom + 20} />
@@ -605,6 +615,7 @@ function DashboardTabContent({
   onOpenModule,
   onSignInAgain,
   onLogout,
+  ota,
 }: {
   activeTab: DashboardTab;
   student?: StudentSummary;
@@ -615,6 +626,7 @@ function DashboardTabContent({
   onOpenModule: (key: PortalModuleKey) => void;
   onSignInAgain: () => void;
   onLogout: () => void;
+  ota: OtaController;
 }) {
   const insets = useSafeAreaInsets();
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | undefined>();
@@ -652,6 +664,33 @@ function DashboardTabContent({
           </Animated.View>
 
           <Animated.View entering={FadeInDown.duration(420)} style={styles.settingsCard}>
+            <View style={styles.settingsUpdateHeading}>
+              <View style={styles.settingsUpdateIcon}>
+                <CloudDownload size={22} color={colors.rose500} strokeWidth={2.6} />
+              </View>
+              <View style={styles.settingsUpdateCopy}>
+                <Text style={styles.settingsUpdateEyebrow}>APP UPDATES</Text>
+                <Text style={styles.settingsUpdateTitle}>Version {ota.appVersion}</Text>
+              </View>
+            </View>
+            <Text style={styles.settingsText}>{otaStatusText(ota)}</Text>
+            <AnimatedPressable
+              disabled={ota.phase === 'checking'}
+              onPress={() => ota.checkForUpdate(true)}
+              style={[styles.settingsUpdateButton, ota.phase === 'checking' ? styles.disabledButton : null]}
+            >
+              {ota.phase === 'checking' ? (
+                <ActivityIndicator color={colors.rose500} size="small" />
+              ) : (
+                <RefreshCw size={17} color={colors.rose500} strokeWidth={2.7} />
+              )}
+              <Text style={styles.settingsUpdateButtonText}>
+                {ota.phase === 'checking' ? 'Checking…' : 'Check for updates'}
+              </Text>
+            </AnimatedPressable>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.duration(460)} style={styles.settingsCard}>
             <Scale size={28} color={colors.rose500} strokeWidth={2.5} />
             <Text style={styles.settingsTitle}>Account & legal</Text>
             <Text style={styles.settingsText}>Review the app policies or securely end your current portal session.</Text>
@@ -986,6 +1025,17 @@ function greetingLabel(tab: DashboardTab) {
     case 'settings':
       return 'App controls';
   }
+}
+
+function otaStatusText(ota: OtaController) {
+  if (!ota.supported) return ota.message ?? 'Signed hot updates are enabled in installed Android builds.';
+  if (ota.phase === 'available') return `Bundle #${ota.manifest?.bundleVersion ?? '—'} is ready to download.`;
+  if (ota.phase === 'downloading') return `Downloading and verifying… ${Math.round(ota.progress * 100)}%`;
+  if (ota.phase === 'installed') return 'A verified update is ready to apply on restart.';
+  if (ota.phase === 'error') return ota.message ?? 'The latest update status is unavailable.';
+  if (ota.phase === 'up-to-date') return 'You have the latest signed app update.';
+  if (ota.lastCheckedAt) return `Last checked ${formatTimestamp(ota.lastCheckedAt)}.`;
+  return `Production channel • Bundle #${ota.currentBundleVersion}`;
 }
 
 function tabTitle(tab: DashboardTab) {
@@ -1715,6 +1765,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 12,
     padding: 22,
+  },
+  settingsUpdateHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  settingsUpdateIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.rose100,
+    borderRadius: 18,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  settingsUpdateCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  settingsUpdateEyebrow: {
+    color: colors.rose500,
+    fontFamily: fontFamily.black,
+    fontSize: 10,
+    letterSpacing: 0.8,
+  },
+  settingsUpdateTitle: {
+    color: colors.ink,
+    fontFamily: fontFamily.black,
+    fontSize: 18,
+    lineHeight: 23,
+  },
+  settingsUpdateButton: {
+    alignItems: 'center',
+    backgroundColor: colors.rose50,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    justifyContent: 'center',
+    minHeight: 52,
+    width: '100%',
+  },
+  settingsUpdateButtonText: {
+    color: colors.rose500,
+    fontFamily: fontFamily.black,
+    fontSize: 13,
   },
   settingsTitle: {
     color: colors.ink,

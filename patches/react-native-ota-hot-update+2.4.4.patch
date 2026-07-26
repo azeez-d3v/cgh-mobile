@@ -1,0 +1,46 @@
+diff --git a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
+index a9d5996..9b3778d 100644
+--- a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
++++ b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
+@@ -29,6 +29,13 @@ class CrashHandler(private val context: Context) : Thread.UncaughtExceptionHandl
+       val sharedPrefs = SharedPrefs(context)
+       val currentPath = sharedPrefs.getString(PATH)
+ 
++      // Do not restart-loop when the embedded bundle itself crashes. This
++      // handler is only responsible for recovering from an active OTA bundle.
++      if (currentPath.isNullOrEmpty() || !File(currentPath).isFile) {
++        defaultHandler?.uncaughtException(thread, throwable)
++        return
++      }
++
+       // Try to rollback using history system
+       val historyJson = sharedPrefs.getString(BUNDLE_HISTORY)
+       var rolledBack = false
+diff --git a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
+index a7821c5..49d0bed 100644
+--- a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
++++ b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
+@@ -50,7 +50,7 @@ class Utils internal constructor(private val context: Context) {
+     zipFile: File,extension: String, version: Int? = null
+   ): String? {
+     return try {
+-      val outputDir = zipFile.parentFile
++      val outputDir = zipFile.parentFile ?: return null
+       val timestamp = SimpleDateFormat("yyyy_MM_dd_HH_mm", Locale.getDefault()).format(Date())
+       var topLevelFolder: String? = null
+       var bundlePath: String? = null
+@@ -65,6 +65,14 @@ class Utils internal constructor(private val context: Context) {
+               }
+             }
+             val outputFile = File(outputDir, entry.name)
++            val outputRoot = outputDir.canonicalFile
++            val canonicalOutput = outputFile.canonicalFile
++            if (
++              canonicalOutput.path != outputRoot.path &&
++              !canonicalOutput.path.startsWith(outputRoot.path + File.separator)
++            ) {
++              throw SecurityException("Unsafe ZIP entry: ${entry.name}")
++            }
+             if (entry.isDirectory) {
+               if (!outputFile.exists()) outputFile.mkdirs()
+             } else {

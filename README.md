@@ -29,7 +29,7 @@ Requirements:
 
 - Node.js 24
 - npm
-- Expo Go or an Android device
+- Expo Go for ordinary UI work, or an Android development build for native OTA testing
 
 Install and start:
 
@@ -56,21 +56,21 @@ npm run validate
 
 This runs TypeScript validation, parser fixtures, and Expo Doctor.
 
-## Environments and OTA
+## Environments and signed OTA
 
-| Source branch | GitHub environment | EAS environment | OTA channel |
+| Source branch | GitHub environment | OTA channel | Android package |
 | --- | --- | --- | --- |
-| `development` | `development` | `development` | `development` |
-| `production` | `production` | `production` | `production` |
+| `development` | `development` | `development` | `com.azeezd3v.cghmobile.dev` |
+| `production` | `production` | `production` | `com.azeezd3v.cghmobile` |
 
-Useful commands:
+Expo is used for local development and native project generation. OTA bundles and
+signed APK files are built by GitHub Actions and hosted in the public download
+repository. EAS Update is not used.
 
-```bash
-npm run build:development
-npm run build:production
-npm run update:development -- --message "Description"
-npm run update:production -- --message "Description"
-```
+Every OTA manifest is signed with Ed25519. The app verifies that signature, the
+target app version, download size, trusted host, and SHA-256 checksum before the
+native updater can install a bundle. Failed startup bundles return to the
+embedded APK bundle or a retained previous bundle.
 
 See [`docs/RELEASES.md`](docs/RELEASES.md) for release automation, required repository secrets, and the distinction between OTA-compatible changes and native changes that require a new APK.
 

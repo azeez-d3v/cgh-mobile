@@ -33,12 +33,14 @@ pnpm-debug.*
 .env
 .env.*
 !.env.example
+.secrets/
 *.keystore
 *.properties.local
 
 # Generated release artifacts
 *.apk
 *.aab
+.ota/
 artifacts/
 coverage/
 tmp/

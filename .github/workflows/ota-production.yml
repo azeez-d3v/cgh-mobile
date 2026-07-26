@@ -3,27 +3,41 @@ name: OTA Production
 on:
   workflow_dispatch:
     inputs:
-      message:
-        description: Update message
+      bundle_version:
+        description: Positive bundle number; leave blank to use the workflow run number
+        required: false
+      notes:
+        description: Release notes, one item per line
         required: true
-        default: Production update
+        default: Performance and reliability improvements.
+      mandatory:
+        description: Require the update before dismissing the prompt
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: ota-production
+  group: ota-pages-publish
   cancel-in-progress: false
 
 jobs:
-  update:
+  publish:
     environment: production
-    env:
-      UPDATE_MESSAGE: ${{ inputs.message }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      APP_VARIANT: production
+      EXPO_PUBLIC_APP_ENV: production
+      EXPO_NO_DOTENV: "1"
+      OTA_SIGNING_PRIVATE_KEY: ${{ secrets.OTA_SIGNING_PRIVATE_KEY }}
+      OTA_RELEASE_NOTES: ${{ inputs.notes }}
+      OTA_MANDATORY: ${{ inputs.mandatory }}
+      GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
     steps:
-      - name: Checkout production
+      - name: Checkout production source
         uses: actions/checkout@v6
         with:
           ref: production
@@ -39,11 +53,89 @@ jobs:
       - name: Validate project
         run: npm run validate
 
-      - name: Set up EAS
-        uses: expo/expo-github-action@v9
+      - name: Checkout public update pointer
+        uses: actions/checkout@v6
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          repository: azeez-d3v/cgh-mobile-downloads
+          ref: production
+          token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          path: public-downloads
 
-      - name: Publish production OTA
-        run: eas update --channel production --environment production --message "${UPDATE_MESSAGE}" --non-interactive
+      - name: Resolve OTA release values
+        id: release
+        shell: bash
+        run: |
+          APP_VERSION="$(node -p "require('./app.json').expo.version")"
+          POINTER_PATH="public-downloads/ota/production/${APP_VERSION}/update.json"
+          CURRENT_VERSION=0
+          if [[ -f "$POINTER_PATH" ]]; then
+            CURRENT_VERSION="$(node -e "const fs=require('fs');console.log(JSON.parse(fs.readFileSync(process.argv[1],'utf8')).bundleVersion)" "$POINTER_PATH")"
+          fi
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+$ ]]; then
+            echo "Published production pointer has an invalid bundle version" >&2
+            exit 1
+          fi
+          BUNDLE_VERSION="${{ inputs.bundle_version }}"
+          if [[ -z "$BUNDLE_VERSION" ]]; then BUNDLE_VERSION="$((CURRENT_VERSION + 1))"; fi
+          if ! [[ "$BUNDLE_VERSION" =~ ^[1-9][0-9]*$ ]]; then
+            echo "bundle_version must be a positive integer" >&2
+            exit 1
+          fi
+          if (( BUNDLE_VERSION <= CURRENT_VERSION )); then
+            echo "bundle_version must be greater than the published version (${CURRENT_VERSION})" >&2
+            exit 1
+          fi
+          TAG="ota-production-v${APP_VERSION}-${BUNDLE_VERSION}"
+          DOWNLOAD_URL="https://github.com/azeez-d3v/cgh-mobile-downloads/releases/download/${TAG}/android.bundle.zip"
+          echo "bundle_version=${BUNDLE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "download_url=${DOWNLOAD_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Export Android JavaScript bundle
+        run: |
+          mkdir -p .ota/package
+          npx expo export:embed \
+            --platform android \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output .ota/package/index.android.bundle \
+            --assets-dest .ota/package
+          cd .ota
+          zip -q -r android.bundle.zip package
+
+      - name: Create signed OTA manifest
+        run: |
+          node scripts/create-ota-manifest.mjs \
+            --bundle .ota/android.bundle.zip \
+            --output .ota \
+            --channel production \
+            --bundle-version "${{ steps.release.outputs.bundle_version }}" \
+            --download-url "${{ steps.release.outputs.download_url }}"
+          node scripts/verify-ota-package.mjs
+
+      - name: Publish immutable OTA assets
+        run: |
+          gh release create "${{ steps.release.outputs.tag }}" \
+            ".ota/android.bundle.zip#Android OTA bundle" \
+            ".ota/android.bundle.zip.sha256#SHA-256 checksum" \
+            ".ota/update.json#Signed update manifest" \
+            ".ota/update.json.sig#Manifest signature" \
+            --repo azeez-d3v/cgh-mobile-downloads \
+            --title "Production OTA #${{ steps.release.outputs.bundle_version }}" \
+            --notes "${OTA_RELEASE_NOTES}" \
+            --prerelease
+
+      - name: Update production channel pointer
+        run: |
+          POINTER_DIR="public-downloads/ota/production/${{ steps.release.outputs.app_version }}"
+          mkdir -p "$POINTER_DIR"
+          cp .ota/update.json "$POINTER_DIR/update.json"
+          cp .ota/update.json.sig "$POINTER_DIR/update.json.sig"
+          cd public-downloads
+          git config user.name "cgh-mobile-release"
+          git config user.email "actions@users.noreply.github.com"
+          git add "ota/production/${{ steps.release.outputs.app_version }}"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "release: production OTA #${{ steps.release.outputs.bundle_version }}"
+          git push origin production

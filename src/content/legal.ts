@@ -61,6 +61,7 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
         paragraphs: [
           'The app depends on pages and responses provided by the official SchoolAutomate portal. Portal maintenance, layout changes, authentication changes, outages, network restrictions, or policy changes may cause some or all features to stop working without notice.',
           'The maintainer is not responsible for maintaining compatibility with every future portal change and may limit, modify, suspend, or remove functionality at any time.',
+          'Installed Android builds may check GitHub-hosted, cryptographically signed software updates. JavaScript updates are verified before installation, while native changes require a newly signed APK.',
         ],
       },
       {
@@ -133,6 +134,7 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
         title: '5. Sharing',
         paragraphs: [
           'The app communicates with the official student portal to authenticate your account and retrieve the records you request. It does not intentionally sell your information or share it with advertisers.',
+          'The app may contact public GitHub-hosted files to check for and download signed software updates. Student credentials and retrieved school records are not included in those update requests.',
         ],
       },
       {
