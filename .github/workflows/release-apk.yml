@@ -1,0 +1,74 @@
+name: Build and Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the v prefix (for example 1.0.0)
+        required: true
+      notes:
+        description: Short release notes
+        required: true
+        default: CGH Mobile production release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-apk
+  cancel-in-progress: false
+
+jobs:
+  release:
+    environment: production
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_NOTES: ${{ inputs.notes }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout production
+        uses: actions/checkout@v6
+        with:
+          ref: production
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: npm run validate
+
+      - name: Set release version
+        run: |
+          node -e "const fs=require('fs');const version=process.env.RELEASE_VERSION;if(!/^\d+\.\d+\.\d+([+-][0-9A-Za-z.-]+)?$/.test(version))throw new Error('Version must be semantic');for(const file of ['package.json','app.json']){const data=JSON.parse(fs.readFileSync(file,'utf8'));if(file==='package.json')data.version=version;else data.expo.version=version;fs.writeFileSync(file,JSON.stringify(data,null,2)+'\n');}"
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build production APK
+        run: eas build --platform android --profile production --message "v${RELEASE_VERSION}" --non-interactive --wait --json > eas-build.json
+
+      - name: Download APK
+        run: |
+          node -e "const fs=require('fs');const data=JSON.parse(fs.readFileSync('eas-build.json','utf8'));const build=Array.isArray(data)?data[0]:data;const url=build?.artifacts?.buildUrl||build?.artifacts?.applicationArchiveUrl;if(!url)throw new Error('EAS did not return an APK URL');fs.writeFileSync('artifact-url.txt',url);"
+          curl --fail --location "$(cat artifact-url.txt)" --output CGH-Mobile.apk
+
+      - name: Publish APK to public download repository
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+        run: |
+          gh release create "v${RELEASE_VERSION}" \
+            "CGH-Mobile.apk#CGH Mobile v${RELEASE_VERSION}" \
+            --repo azeez-d3v/cgh-mobile-downloads \
+            --title "CGH Mobile v${RELEASE_VERSION}" \
+            --notes "${RELEASE_NOTES}" \
+            --latest

@@ -1,0 +1,33 @@
+export const colors = {
+  background: '#FFF1F6',
+  backgroundDeep: '#F8DDE8',
+  surface: 'rgba(255, 255, 255, 0.88)',
+  surfaceStrong: '#FFFFFF',
+  rose50: '#FFF7FA',
+  rose100: '#FFE9F1',
+  rose200: '#FFD1E0',
+  rose300: '#F9AFC8',
+  rose400: '#EF7FA5',
+  rose500: '#D95E8A',
+  coral: '#FF9A9E',
+  lavender: '#D9C7FF',
+  lavenderSoft: '#F0E9FF',
+  cream: '#FFF8ED',
+  mint: '#DDF7EF',
+  sky: '#DFF4FF',
+  ink: '#2D1B25',
+  inkSoft: '#6E5260',
+  muted: '#987888',
+  line: 'rgba(217, 94, 138, 0.14)',
+  white: '#FFFFFF',
+  danger: '#B42318',
+  success: '#27966F',
+};
+
+export const gradients = {
+  app: ['#FFF7FA', '#FFF1F6', '#F7DDEA'] as const,
+  hero: ['#FFE1EC', '#F6D7FF', '#FFEEDB'] as const,
+  button: ['#F988B0', '#E56B95'] as const,
+  card: ['rgba(255,255,255,0.96)', 'rgba(255,245,249,0.9)'] as const,
+  darkRose: ['#6B304B', '#A44D72'] as const,
+};

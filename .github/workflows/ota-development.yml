@@ -1,0 +1,50 @@
+name: OTA Development
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Update message
+        required: true
+        default: Development update
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ota-development
+  cancel-in-progress: false
+
+jobs:
+  update:
+    environment: development
+    env:
+      UPDATE_MESSAGE: ${{ inputs.message }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout development
+        uses: actions/checkout@v6
+        with:
+          ref: development
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          package-manager-cache: true
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project
+        run: npm run validate
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish development OTA
+        run: eas update --channel development --environment development --message "${UPDATE_MESSAGE}" --non-interactive

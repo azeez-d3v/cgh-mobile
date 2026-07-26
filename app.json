@@ -1,25 +1,49 @@
 {
   "expo": {
-    "name": "cgh-mobile",
+    "name": "CGH Mobile",
     "slug": "cgh-mobile",
     "version": "1.0.0",
+    "scheme": "cghmobile",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-v2.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.azeezd3v.cghmobile",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FDE7EF",
+        "foregroundImage": "./assets/android-icon-foreground-v2.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon-v2.png"
+    },
+    "plugins": [
+      "expo-image",
+      "expo-font",
+      "expo-splash-screen"
+    ],
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true,
+      "barStyle": "dark-content"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "891d34df-7515-4aa1-835b-30d0070e363d"
+      }
+    },
+    "owner": "azeeez",
+    "updates": {
+      "url": "https://u.expo.dev/891d34df-7515-4aa1-835b-30d0070e363d"
     }
   }
 }
