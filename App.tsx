@@ -67,6 +67,7 @@ import type { OtaController } from './src/ota/types';
 import { colors, gradients } from './src/theme/colors';
 import { fontFamily } from './src/theme/typography';
 import { radii } from './src/theme/spacing';
+import { portalUserMessage } from './src/utils/userErrors';
 
 type DashboardTab = 'home' | 'records' | 'profile' | 'settings';
 
@@ -129,9 +130,11 @@ export default function App() {
         setOfflineMode(true);
         setPreviewMode(false);
         setStudent(cachedStudent);
-        setError(`Network login failed. Showing cached offline mode. ${cause instanceof Error ? cause.message : ''}`.trim());
+        setError(
+          `Showing your latest saved records. ${portalUserMessage(cause, 'login', deviceOffline)}`,
+        );
       } else {
-        setError(cause instanceof Error ? cause.message : 'Login failed.');
+        setError(portalUserMessage(cause, 'login', deviceOffline));
       }
     } finally {
       setLoginLoading(false);
@@ -175,7 +178,7 @@ export default function App() {
       setSessionExpired(false);
       setSelectedModule(data);
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Unable to load module.';
+      const message = portalUserMessage(cause, 'records', deviceOffline);
       const cached = await getCachedModule(key);
       if (cached) {
         setSelectedModule({
@@ -185,7 +188,11 @@ export default function App() {
             ? `Session expired • copy saved ${formatTimestamp(cached.fetchedAt)}`
             : `Network unavailable • copy saved ${formatTimestamp(cached.fetchedAt)}`,
         });
-        setError(isSessionExpiredError(cause) ? 'Session expired. Showing the latest cached copy. Please sign in again when you need fresh data.' : `Network request failed. Showing cached copy. ${message}`);
+        setError(
+          isSessionExpiredError(cause)
+            ? 'Session expired. Showing the latest cached copy. Please sign in again when you need fresh data.'
+            : `Showing the latest saved copy. ${message}`,
+        );
       } else {
         setError(isSessionExpiredError(cause) ? 'Session expired. Please sign in again.' : message);
       }

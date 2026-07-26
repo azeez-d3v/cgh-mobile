@@ -6,6 +6,22 @@ const LOGIN_PATH = '/PARENTS_STUDENTS/main_files/login_new.jsp';
 const MENU_PATH = '/PARENTS_STUDENTS/main_files/parents_students_main_links.jsp';
 const KEEP_ALIVE_PATH = '/Ajax/AjaxInterface.jsp';
 
+export type PortalRequestErrorCode =
+  | 'PORTAL_AUTHENTICATION'
+  | 'PORTAL_NETWORK'
+  | 'PORTAL_TIMEOUT'
+  | 'PORTAL_UNAVAILABLE';
+
+export class PortalRequestError extends Error {
+  readonly code: PortalRequestErrorCode;
+
+  constructor(code: PortalRequestErrorCode, message: string) {
+    super(message);
+    this.name = 'PortalRequestError';
+    this.code = code;
+  }
+}
+
 export class PortalSessionExpiredError extends Error {
   constructor(message = 'Your CGH portal session expired. Please sign in again.') {
     super(message);
@@ -92,7 +108,12 @@ export class CghPortalClient {
     let loginHtml = await this.getText(LOGIN_PATH);
     const usernameForm = extractInputs(loginHtml);
     const usernameField = usernameForm.user_id;
-    if (!usernameField) throw new Error('CGH login form changed: username field was not found.');
+    if (!usernameField) {
+      throw new PortalRequestError(
+        'PORTAL_UNAVAILABLE',
+        'The portal could not start the sign-in process.',
+      );
+    }
     usernameForm[usernameField] = username.trim();
 
     loginHtml = await this.postText(LOGIN_PATH, usernameForm, LOGIN_PATH);
@@ -100,7 +121,13 @@ export class CghPortalClient {
     const secondUsernameField = passwordForm.user_id;
     const passwordField = passwordForm.password;
     if (!secondUsernameField || !passwordField) {
-      throw new Error(readLoginFailure(loginHtml) || 'CGH login did not show a password field for this user.');
+      const failure = readLoginFailure(loginHtml);
+      throw new PortalRequestError(
+        looksLikeAuthenticationFailure(failure)
+          ? 'PORTAL_AUTHENTICATION'
+          : 'PORTAL_UNAVAILABLE',
+        'The portal could not continue the sign-in process.',
+      );
     }
 
     passwordForm[secondUsernameField] = username.trim();
@@ -112,7 +139,10 @@ export class CghPortalClient {
     const menuHtml = await this.getText(MENU_PATH);
     if (!/<p>\s*Logout\s*<\/p>/i.test(menuHtml)) {
       const rightFrame = await this.getText('/PARENTS_STUDENTS/main_files/parents_student_main_page_rightFrame.jsp');
-      throw new Error(readLoginFailure(rightFrame) || 'Login failed. Please check the username and password.');
+      throw new PortalRequestError(
+        'PORTAL_AUTHENTICATION',
+        'The Student ID or password was not accepted.',
+      );
     }
 
     this.authenticated = true;
@@ -154,7 +184,12 @@ export class CghPortalClient {
 
     const response = await fetchWithTimeout(url, { method: 'GET', headers });
     this.captureCookies(response.headers);
-    if (!response.ok) throw new Error(`CGH portal image request failed (${response.status}).`);
+    if (!response.ok) {
+      throw new PortalRequestError(
+        'PORTAL_UNAVAILABLE',
+        'The portal image could not be loaded.',
+      );
+    }
 
     return {
       contentType: response.headers.get('content-type')?.split(';')[0] || 'image/jpeg',
@@ -214,8 +249,11 @@ export class CghPortalClient {
         },
       });
     } catch (error) {
-      if (error instanceof Error && /timed out/i.test(error.message)) throw error;
-      throw new Error(`Web portal proxy is not reachable at ${this.proxyBaseUrl}. Run npm run proxy in another terminal, then retry.`);
+      if (error instanceof PortalRequestError) throw error;
+      throw new PortalRequestError(
+        'PORTAL_NETWORK',
+        'The portal connection is unavailable.',
+      );
     }
 
     const payload = await response.json().catch(() => undefined) as { error?: string } | T | undefined;
@@ -223,7 +261,12 @@ export class CghPortalClient {
       const message = payload && typeof payload === 'object' && 'error' in payload ? payload.error : undefined;
       const code = payload && typeof payload === 'object' && 'code' in payload ? payload.code : undefined;
       if (code === 'SESSION_EXPIRED') throw new PortalSessionExpiredError(message);
-      throw new Error(message || `Portal proxy failed (${response.status}).`);
+      throw new PortalRequestError(
+        response.status === 401 || response.status === 403
+          ? 'PORTAL_AUTHENTICATION'
+          : 'PORTAL_UNAVAILABLE',
+        'The portal request could not be completed.',
+      );
     }
     return payload as T;
   }
@@ -253,8 +296,11 @@ export class CghPortalClient {
     try {
       response = await fetchWithTimeout(absoluteUrl(pathOrUrl), { ...init, headers, redirect: manualRedirect ? 'manual' : 'follow' });
     } catch (error) {
-      if (error instanceof Error && /timed out/i.test(error.message)) throw error;
-      throw new Error(`Unable to reach the CGH portal. ${error instanceof Error ? error.message : 'Check your connection and try again.'}`);
+      if (error instanceof PortalRequestError) throw error;
+      throw new PortalRequestError(
+        'PORTAL_NETWORK',
+        'The portal connection is unavailable.',
+      );
     }
     this.captureCookies(response.headers);
 
@@ -265,7 +311,10 @@ export class CghPortalClient {
     }
     if (manualRedirect && response.status >= 300 && response.status < 400) return text;
     if (!response.ok) {
-      throw new Error(`CGH portal request failed (${response.status}): ${cleanText(text).slice(0, 120)}`);
+      throw new PortalRequestError(
+        'PORTAL_UNAVAILABLE',
+        'The portal request could not be completed.',
+      );
     }
     return text;
   }
@@ -340,6 +389,15 @@ function isBrowserWeb() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
+function looksLikeAuthenticationFailure(message?: string) {
+  return Boolean(
+    message &&
+      /invalid|incorrect|not found|does not exist|not registered|username|student id|password/i.test(
+        message,
+      ),
+  );
+}
+
 function isDevelopmentPreview() {
   return (
     typeof process !== 'undefined' &&
@@ -385,7 +443,10 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 20_0
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('The portal request timed out. Check your connection and retry.');
+      throw new PortalRequestError(
+        'PORTAL_TIMEOUT',
+        'The portal request timed out.',
+      );
     }
     throw error;
   } finally {

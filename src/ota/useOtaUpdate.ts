@@ -9,6 +9,7 @@ import {
   restartWithInstalledUpdate,
 } from './otaService';
 import type { OtaController, OtaState } from './types';
+import { updateUserMessage } from '../utils/userErrors';
 
 const initialSupported = isOtaSupported();
 
@@ -64,7 +65,7 @@ export function useOtaUpdate(): OtaController {
       setState((current) => ({
         ...current,
         phase: 'error',
-        message: error instanceof Error ? error.message : 'Unable to check for updates.',
+        message: updateUserMessage(error, 'check'),
         modalVisible: manual,
       }));
     } finally {
@@ -103,7 +104,7 @@ export function useOtaUpdate(): OtaController {
       setState((current) => ({
         ...current,
         phase: 'error',
-        message: error instanceof Error ? error.message : 'Unable to install the update.',
+        message: updateUserMessage(error, 'install'),
         modalVisible: true,
       }));
     }
@@ -116,7 +117,7 @@ export function useOtaUpdate(): OtaController {
       setState((current) => ({
         ...current,
         phase: 'error',
-        message: error instanceof Error ? error.message : 'Unable to restart the app.',
+        message: updateUserMessage(error, 'restart'),
         modalVisible: true,
       }));
     }

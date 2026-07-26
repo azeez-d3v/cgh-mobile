@@ -54,7 +54,8 @@ Preview Mode and its login control are compiled for local development only and a
 npm run validate
 ```
 
-This runs TypeScript validation, parser fixtures, and Expo Doctor.
+This runs version consistency checks, TypeScript validation, parser fixtures,
+user-safe error mapping tests, and Expo Doctor.
 
 ## Environments and signed OTA
 
