@@ -1,9 +1,7 @@
-import type { ConfigContext, ExpoConfig } from 'expo/config';
-import appJson from './app.json';
+const appJson = require('./app.json');
 
-const baseConfig = appJson.expo as ExpoConfig;
-
-export default ({ config }: ConfigContext): ExpoConfig => {
+module.exports = ({ config }) => {
+  const baseConfig = appJson.expo;
   const appEnvironment = process.env.APP_VARIANT === 'development' ? 'development' : 'production';
   const isDevelopment = appEnvironment === 'development';
   const productionPackage = baseConfig.android?.package ?? 'com.azeezd3v.cghmobile';
