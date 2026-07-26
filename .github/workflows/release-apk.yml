@@ -25,6 +25,7 @@ jobs:
       RELEASE_VERSION: ${{ inputs.version }}
       RELEASE_NOTES: ${{ inputs.notes }}
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - name: Checkout production
         uses: actions/checkout@v6
