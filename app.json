@@ -3,6 +3,9 @@
     "name": "CGH Mobile",
     "slug": "cgh-mobile",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "scheme": "cghmobile",
     "orientation": "portrait",
     "icon": "./assets/icon-v2.png",
@@ -18,10 +21,7 @@
         "backgroundColor": "#FDE7EF",
         "foregroundImage": "./assets/android-icon-foreground-v2.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "runtimeVersion": {
-        "policy": "appVersion"
-      }
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon-v2.png"
