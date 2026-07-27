@@ -25,7 +25,7 @@ module.exports = ({ config }) => {
   return {
     ...config,
     ...baseConfig,
-    name: isDevelopment ? 'CGH Mobile Dev' : 'CGH Mobile',
+    name: isDevelopment ? 'Portal Dev' : 'Portal',
     android: {
       ...baseConfig.android,
       package: isDevelopment ? `${productionPackage}.dev` : productionPackage,

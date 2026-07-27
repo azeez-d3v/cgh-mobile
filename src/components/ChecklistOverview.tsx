@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, GraduationCap } from 'lucide-react-native';
 import type { TableData } from '../types';
 import { colors } from '../theme/colors';
@@ -130,7 +130,7 @@ export const ChecklistOverview = memo(function ChecklistOverview({
 
         <Animated.View key={`${term}-${filter}-${safePage}`} entering={FadeIn.duration(220)} style={styles.courseList}>
           {visible.length > 0 ? (
-            visible.map((record, index) => <CourseRow key={`${record.term}-${record.code}-${index}`} record={record} index={index} />)
+            visible.map((record, index) => <CourseRow key={`${record.term}-${record.code}-${index}`} record={record} />)
           ) : (
             <View style={styles.empty}>
               <CheckCircle2 size={28} color={colors.success} strokeWidth={2.4} />
@@ -152,11 +152,11 @@ export const ChecklistOverview = memo(function ChecklistOverview({
   );
 });
 
-function CourseRow({ record, index }: { record: ChecklistRecord; index: number }) {
+const CourseRow = memo(function CourseRow({ record }: { record: ChecklistRecord }) {
   const Icon = record.completed ? CheckCircle2 : CircleDashed;
   const statusLabel = record.completed ? 'Completed' : record.inProgress ? 'In progress' : 'To take';
   return (
-    <Animated.View entering={FadeInUp.delay(index * 40).duration(260)} style={styles.courseRow}>
+    <View style={styles.courseRow}>
       <View style={[styles.statusIcon, record.completed ? styles.statusIconDone : null]}>
         <Icon size={17} color={record.completed ? colors.success : colors.rose500} strokeWidth={2.6} />
       </View>
@@ -168,9 +168,9 @@ function CourseRow({ record, index }: { record: ChecklistRecord; index: number }
         <Text style={styles.courseName} numberOfLines={2}>{record.description || 'Course description unavailable'}</Text>
         <Text style={styles.courseMeta}>{record.units || '—'} units{record.credit ? ` • ${record.credit} earned` : ''}</Text>
       </View>
-    </Animated.View>
+    </View>
   );
-}
+});
 
 function Stat({ value, label, tone }: { value: string; label: string; tone: 'green' | 'rose' | 'purple' }) {
   return (

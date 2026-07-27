@@ -8,6 +8,8 @@ const KEEP_ALIVE_PATH = '/Ajax/AjaxInterface.jsp';
 
 export type PortalRequestErrorCode =
   | 'PORTAL_AUTHENTICATION'
+  | 'PORTAL_STUDENT_ID'
+  | 'PORTAL_PASSWORD'
   | 'PORTAL_NETWORK'
   | 'PORTAL_TIMEOUT'
   | 'PORTAL_UNAVAILABLE';
@@ -23,6 +25,8 @@ export class PortalRequestError extends Error {
 }
 
 export class PortalSessionExpiredError extends Error {
+  readonly code = 'PORTAL_SESSION_EXPIRED';
+
   constructor(message = 'Your CGH portal session expired. Please sign in again.') {
     super(message);
     this.name = 'PortalSessionExpiredError';
@@ -124,7 +128,7 @@ export class CghPortalClient {
       const failure = readLoginFailure(loginHtml);
       throw new PortalRequestError(
         looksLikeAuthenticationFailure(failure)
-          ? 'PORTAL_AUTHENTICATION'
+          ? 'PORTAL_STUDENT_ID'
           : 'PORTAL_UNAVAILABLE',
         'The portal could not continue the sign-in process.',
       );
@@ -136,9 +140,11 @@ export class CghPortalClient {
 
     await this.postText('/commfile/login.jsp', passwordForm, LOGIN_PATH, true);
 
-    const menuHtml = await this.getText(MENU_PATH);
+    // During sign-in, the portal represents rejected credentials by returning
+    // its logged-out page. Inspect that response here instead of classifying it
+    // as an expired session, which only applies after authentication succeeds.
+    const menuHtml = await this.getText(MENU_PATH, true);
     if (!/<p>\s*Logout\s*<\/p>/i.test(menuHtml)) {
-      const rightFrame = await this.getText('/PARENTS_STUDENTS/main_files/parents_student_main_page_rightFrame.jsp');
       throw new PortalRequestError(
         'PORTAL_AUTHENTICATION',
         'The Student ID or password was not accepted.',
@@ -261,6 +267,9 @@ export class CghPortalClient {
       const message = payload && typeof payload === 'object' && 'error' in payload ? payload.error : undefined;
       const code = payload && typeof payload === 'object' && 'code' in payload ? payload.code : undefined;
       if (code === 'SESSION_EXPIRED') throw new PortalSessionExpiredError(message);
+      if (code === 'PORTAL_STUDENT_ID' || code === 'PORTAL_PASSWORD') {
+        throw new PortalRequestError(code, 'The sign-in details were not accepted.');
+      }
       throw new PortalRequestError(
         response.status === 401 || response.status === 403
           ? 'PORTAL_AUTHENTICATION'
@@ -271,8 +280,8 @@ export class CghPortalClient {
     return payload as T;
   }
 
-  private async getText(pathOrUrl: string) {
-    return this.requestText(pathOrUrl, { method: 'GET' });
+  private async getText(pathOrUrl: string, allowLoggedOutResponse = false) {
+    return this.requestText(pathOrUrl, { method: 'GET' }, false, allowLoggedOutResponse);
   }
 
   private async postText(pathOrUrl: string, body: Record<string, string>, referer?: string, manualRedirect = false) {
@@ -286,7 +295,12 @@ export class CghPortalClient {
     }, manualRedirect);
   }
 
-  private async requestText(pathOrUrl: string, init: RequestInit, manualRedirect = false) {
+  private async requestText(
+    pathOrUrl: string,
+    init: RequestInit,
+    manualRedirect = false,
+    allowLoggedOutResponse = false,
+  ) {
     const headers = new Headers(init.headers);
     headers.set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
     headers.set('User-Agent', 'CGH-Mobile/1.0 Expo React Native');
@@ -305,7 +319,7 @@ export class CghPortalClient {
     this.captureCookies(response.headers);
 
     const text = await response.text();
-    if (!isLoginRequest(pathOrUrl) && looksLoggedOut(text)) {
+    if (!allowLoggedOutResponse && !isLoginRequest(pathOrUrl) && looksLoggedOut(text)) {
       this.authenticated = false;
       throw new PortalSessionExpiredError();
     }
@@ -428,6 +442,13 @@ export function isSessionExpiredError(error: unknown) {
   return error instanceof PortalSessionExpiredError || (error instanceof Error && /session expired|already logged out|please sign in again|please login again/i.test(error.message));
 }
 
+export function isPortalAuthenticationError(error: unknown) {
+  return (
+    error instanceof PortalRequestError &&
+    ['PORTAL_AUTHENTICATION', 'PORTAL_STUDENT_ID', 'PORTAL_PASSWORD'].includes(error.code)
+  );
+}
+
 function isLoginRequest(pathOrUrl: string) {
   return pathOrUrl.includes('login_new.jsp') || pathOrUrl.includes('/commfile/login.jsp');
 }
@@ -438,11 +459,15 @@ function looksLoggedOut(html: string) {
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 20_000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (timedOut || (error instanceof Error && error.name === 'AbortError')) {
       throw new PortalRequestError(
         'PORTAL_TIMEOUT',
         'The portal request timed out.',

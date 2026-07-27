@@ -4,6 +4,10 @@ import {
   portalUserMessage,
   updateUserMessage,
 } from '../src/utils/userErrors';
+import {
+  hasLoginFieldErrors,
+  validateLoginInput,
+} from '../src/utils/loginValidation';
 
 const rawNetworkError = new Error(
   'fetch failed: java.net.UnknownHostException: Unable to resolve host "automate.cghc.edu.ph"',
@@ -21,6 +25,20 @@ assert.equal(
     'login',
   ),
   'The Student ID or password was not accepted. Check your details and try again.',
+);
+assert.equal(
+  portalUserMessage(
+    new PortalRequestError('PORTAL_STUDENT_ID', 'raw portal response'),
+    'login',
+  ),
+  'That Student ID was not recognized. Check the number and try again.',
+);
+assert.equal(
+  portalUserMessage(
+    new PortalRequestError('PORTAL_PASSWORD', 'raw portal response'),
+    'login',
+  ),
+  'The password was not accepted. Check it and try again.',
 );
 assert.equal(
   portalUserMessage(
@@ -47,5 +65,19 @@ assert.equal(
   'We couldn’t check for updates right now. Please try again later.',
 );
 assert.doesNotMatch(updateMessage, /502|private|internal|path/i);
+
+assert.deepEqual(validateLoginInput('', ''), {
+  studentId: 'Enter your Student ID.',
+  password: 'Enter your password.',
+});
+assert.deepEqual(validateLoginInput('student-name', 'password'), {
+  studentId: 'Use the 6–12 digit Student ID issued by your school.',
+});
+assert.deepEqual(validateLoginInput('12345', 'password'), {
+  studentId: 'Use the 6–12 digit Student ID issued by your school.',
+});
+assert.deepEqual(validateLoginInput(' 123456789 ', 'password'), {});
+assert.equal(hasLoginFieldErrors(validateLoginInput('', 'password')), true);
+assert.equal(hasLoginFieldErrors(validateLoginInput('123456789', 'password')), false);
 
 console.log('USER_ERROR_TESTS_OK');

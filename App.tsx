@@ -1,11 +1,13 @@
 import { useFonts, NunitoSans_400Regular, NunitoSans_600SemiBold, NunitoSans_700Bold, NunitoSans_900Black } from '@expo-google-fonts/nunito-sans';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  InteractionManager,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,7 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetInfo } from '@react-native-community/netinfo';
-import Animated, { FadeIn, FadeInDown, FadeInUp, Layout } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   ArrowLeft,
   ArrowRight,
@@ -57,7 +59,12 @@ import { EmptyState, Section } from './src/components/Section';
 import { ModuleCard } from './src/components/ModuleCard';
 import { StudentHeader } from './src/components/StudentHeader';
 import { AnimatedPressable } from './src/components/AnimatedPressable';
-import { CghPortalClient, isSessionExpiredError, MODULES } from './src/services/cghPortal';
+import {
+  CghPortalClient,
+  isPortalAuthenticationError,
+  isSessionExpiredError,
+  MODULES,
+} from './src/services/cghPortal';
 import { previewModule, previewStudent } from './src/services/previewData';
 import { cacheModule, cacheStudent, getCachedModule, getCachedStudent } from './src/services/portalCache';
 import type { PortalModuleData, PortalModuleKey, StudentSummary } from './src/types';
@@ -68,6 +75,10 @@ import { colors, gradients } from './src/theme/colors';
 import { fontFamily } from './src/theme/typography';
 import { radii } from './src/theme/spacing';
 import { portalUserMessage } from './src/utils/userErrors';
+import {
+  hasLoginFieldErrors,
+  validateLoginInput,
+} from './src/utils/loginValidation';
 
 type DashboardTab = 'home' | 'records' | 'profile' | 'settings';
 
@@ -86,8 +97,12 @@ const NAV_ITEMS: NavItem[] = [
 
 const DEV_PREVIEW_AVAILABLE = __DEV__;
 
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+SplashScreen.setOptions({ duration: 180, fade: true });
+
 export default function App() {
-  const [fontsLoaded] = useFonts({ NunitoSans_400Regular, NunitoSans_600SemiBold, NunitoSans_700Bold, NunitoSans_900Black });
+  const [fontsLoaded, fontError] = useFonts({ NunitoSans_400Regular, NunitoSans_600SemiBold, NunitoSans_700Bold, NunitoSans_900Black });
+  const appReady = fontsLoaded || Boolean(fontError);
   const ota = useOtaUpdate();
   const netInfo = useNetInfo();
   const initialPreview = useRef(readWebPreviewRoute()).current;
@@ -110,6 +125,10 @@ export default function App() {
   const deviceOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
   const effectiveOffline = offlineMode || deviceOffline;
 
+  useEffect(() => {
+    if (appReady) void SplashScreen.hideAsync().catch(() => undefined);
+  }, [appReady]);
+
   async function handleLogin(username: string, password: string) {
     setLoginLoading(true);
     setError(undefined);
@@ -123,10 +142,14 @@ export default function App() {
       setSelectedModule(undefined);
       setModuleKey(undefined);
       setActiveTab('home');
-      void warmOfflineCache();
+      InteractionManager.runAfterInteractions(() => {
+        void warmOfflineCache();
+      });
     } catch (cause) {
       const cachedStudent = await getCachedStudent();
-      if (cachedStudent) {
+      const cacheMatchesStudent =
+        cachedStudent?.id?.trim() === username.trim() && !isPortalAuthenticationError(cause);
+      if (cacheMatchesStudent && cachedStudent) {
         setOfflineMode(true);
         setPreviewMode(false);
         setStudent(cachedStudent);
@@ -144,6 +167,7 @@ export default function App() {
   async function warmOfflineCache() {
     for (const module of MODULES) {
       try {
+        await yieldToUi();
         const data = await clientRef.current.loadModule(module.key);
         await cacheModule(data);
         syncStudentNameFromModule(data);
@@ -266,12 +290,8 @@ export default function App() {
     };
   }, [isLoggedIn, previewMode, offlineMode]);
 
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingRoot}>
-        <ActivityIndicator color={colors.rose500} />
-      </View>
-    );
+  if (!appReady) {
+    return null;
   }
 
   return (
@@ -302,7 +322,13 @@ export default function App() {
             ota={ota}
           />
         ) : (
-          <LoginScreen loading={loginLoading} error={error} onLogin={handleLogin} onPreview={handlePreview} />
+          <LoginScreen
+            loading={loginLoading}
+            error={error}
+            onClearError={() => setError(undefined)}
+            onLogin={handleLogin}
+            onPreview={handlePreview}
+          />
         )}
         <LogoutConfirmation
           visible={logoutDialogOpen}
@@ -373,22 +399,48 @@ function LogoutConfirmation({
 function LoginScreen({
   loading,
   error,
+  onClearError,
   onLogin,
   onPreview,
 }: {
   loading: boolean;
   error?: string;
+  onClearError: () => void;
   onLogin: (username: string, password: string) => void;
   onPreview: () => void;
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateLoginInput>>({});
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | undefined>();
   const passwordRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
-  const canSubmit = username.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit = !loading;
+
+  function submit() {
+    const validation = validateLoginInput(username, password);
+    setFieldErrors(validation);
+    if (hasLoginFieldErrors(validation)) return;
+    onLogin(username.trim(), password);
+  }
+
+  function updateUsername(value: string) {
+    setUsername(value.replace(/[^\d]/g, ''));
+    if (fieldErrors.studentId) {
+      setFieldErrors((current) => ({ ...current, studentId: undefined }));
+    }
+    if (error) onClearError();
+  }
+
+  function updatePassword(value: string) {
+    setPassword(value);
+    if (fieldErrors.password) {
+      setFieldErrors((current) => ({ ...current, password: undefined }));
+    }
+    if (error) onClearError();
+  }
 
   return (
     <View style={styles.immersiveRoot}>
@@ -427,7 +479,7 @@ function LoginScreen({
                     <UserRound size={19} color={colors.rose500} strokeWidth={2.5} />
                     <TextInput
                       value={username}
-                      onChangeText={setUsername}
+                      onChangeText={updateUsername}
                       placeholder="Enter your student ID"
                       placeholderTextColor={colors.muted}
                       keyboardType="number-pad"
@@ -437,8 +489,14 @@ function LoginScreen({
                       editable={!loading}
                       returnKeyType="next"
                       onSubmitEditing={() => passwordRef.current?.focus()}
+                      accessibilityHint={fieldErrors.studentId}
                     />
                   </View>
+                  {fieldErrors.studentId ? (
+                    <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+                      {fieldErrors.studentId}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.formGroup}>
@@ -448,7 +506,7 @@ function LoginScreen({
                     <TextInput
                       ref={passwordRef}
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={updatePassword}
                       placeholder="Enter your password"
                       placeholderTextColor={colors.muted}
                       secureTextEntry={!passwordVisible}
@@ -458,7 +516,8 @@ function LoginScreen({
                       editable={!loading}
                       returnKeyType="go"
                       onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 180)}
-                      onSubmitEditing={() => (canSubmit ? onLogin(username, password) : undefined)}
+                      onSubmitEditing={() => (canSubmit ? submit() : undefined)}
+                      accessibilityHint={fieldErrors.password}
                     />
                     <AnimatedPressable onPress={() => setPasswordVisible((visible) => !visible)} style={styles.passwordToggle}>
                       {passwordVisible ? (
@@ -468,6 +527,11 @@ function LoginScreen({
                       )}
                     </AnimatedPressable>
                   </View>
+                  {fieldErrors.password ? (
+                    <Text accessibilityLiveRegion="polite" style={styles.fieldError}>
+                      {fieldErrors.password}
+                    </Text>
+                  ) : null}
                 </View>
 
                 {error ? (
@@ -480,7 +544,7 @@ function LoginScreen({
 
                 <AnimatedPressable
                   disabled={!canSubmit}
-                  onPress={() => onLogin(username, password)}
+                  onPress={submit}
                   style={[styles.loginButton, !canSubmit ? styles.disabledButton : null]}
                 >
                   {loading ? (
@@ -760,8 +824,13 @@ function DashboardTabContent({
       }
       contentContainerStyle={[styles.listContent, { paddingBottom: 136 + insets.bottom }]}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
+      removeClippedSubviews={Platform.OS === 'android'}
+      updateCellsBatchingPeriod={40}
+      windowSize={5}
       renderItem={({ item, index }) => (
-        <Animated.View entering={FadeInUp.delay(index * 55).duration(360)} layout={Layout.springify()}>
+        <Animated.View entering={FadeInUp.delay(Math.min(index, 3) * 35).duration(220)}>
           <ModuleCard module={item} index={index} onPress={onOpenModule} />
         </Animated.View>
       )}
@@ -1071,6 +1140,10 @@ function formatTimestamp(value: string) {
   return Number.isNaN(date.getTime()) ? 'previously' : date.toLocaleString();
 }
 
+function yieldToUi() {
+  return new Promise<void>((resolve) => setTimeout(resolve, 32));
+}
+
 function fullNameFromPersonalInfo(data: PortalModuleData) {
   if (data.key !== 'personalInfo') return undefined;
   const fields = data.infoSections?.find((section) => section.id === 'personal')?.fields;
@@ -1300,6 +1373,14 @@ const styles = StyleSheet.create({
   },
   formGroup: {
     gap: 8,
+  },
+  fieldError: {
+    color: colors.danger,
+    fontFamily: fontFamily.bold,
+    fontSize: 12,
+    lineHeight: 17,
+    marginHorizontal: 2,
+    marginTop: -2,
   },
   label: {
     color: colors.inkSoft,

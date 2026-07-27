@@ -18,8 +18,17 @@ export function portalUserMessage(
   }
 
   const code = readCode(error);
+  if (code === 'PORTAL_STUDENT_ID') {
+    return 'That Student ID was not recognized. Check the number and try again.';
+  }
+  if (code === 'PORTAL_PASSWORD') {
+    return 'The password was not accepted. Check it and try again.';
+  }
   if (code === 'PORTAL_AUTHENTICATION') {
     return 'The Student ID or password was not accepted. Check your details and try again.';
+  }
+  if (code === 'PORTAL_SESSION_EXPIRED') {
+    return 'Your portal session expired. Sign in again to load fresh records.';
   }
   if (code === 'PORTAL_TIMEOUT') {
     return 'The CGH portal is taking too long to respond. Please try again shortly.';

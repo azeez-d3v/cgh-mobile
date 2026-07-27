@@ -7,3 +7,4 @@
 *.webp binary
 *.apk binary
 *.aab binary
+*.patch whitespace=-blank-at-eol,-blank-at-eof

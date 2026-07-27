@@ -4,6 +4,9 @@ Private source repository for an unofficial, independently developed, read-only 
 
 The app is not affiliated with, operated by, or endorsed by CGH or SchoolAutomate. The official portal remains the authoritative source for student records.
 
+The production launcher label is **Portal**. The development variant is
+installed separately as **Portal Dev**.
+
 ## Public distribution
 
 - Download website: <https://azeez-d3v.github.io/cgh-mobile-downloads/>
@@ -57,6 +60,16 @@ npm run validate
 This runs version consistency checks, TypeScript validation, parser fixtures,
 user-safe error mapping tests, and Expo Doctor.
 
+An opt-in live portal smoke test verifies an unknown Student ID, a wrong
+password, valid credentials, and logout without storing credentials in the
+repository:
+
+```powershell
+$env:CGH_USERNAME = '<student-id>'
+$env:CGH_PASSWORD = '<password>'
+npm run test:portal-login
+```
+
 ## Environments and signed OTA
 
 | Source branch | GitHub environment | OTA channel | Android package |
@@ -78,6 +91,12 @@ the official portal through encrypted DNS first and falls back to Android DNS;
 other hosts use Android DNS first with encrypted DNS as a recovery path. OTA
 manifests are checked concurrently through GitHub Pages and the public
 repository’s raw-content mirror.
+
+Production APKs use Hermes bytecode, optimized R8 code shrinking/obfuscation,
+resource shrinking, and release-log removal. Private R8 mapping files are kept
+as restricted workflow artifacts and are never attached to public releases.
+See [`docs/android-build-warnings.md`](docs/android-build-warnings.md) for the
+native warning audit and upstream compatibility notes.
 
 See [`docs/RELEASES.md`](docs/RELEASES.md) for release automation, required repository secrets, and the distinction between OTA-compatible changes and native changes that require a new APK.
 

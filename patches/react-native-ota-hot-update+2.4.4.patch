@@ -1,8 +1,31 @@
 diff --git a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
-index a9d5996..9b3778d 100644
+index a9d5996..26aad77 100644
 --- a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
 +++ b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/CrashHandler.kt
-@@ -29,6 +29,13 @@ class CrashHandler(private val context: Context) : Thread.UncaughtExceptionHandl
+@@ -7,8 +7,9 @@ import com.rnhotupdate.Common.PATH
+ import com.rnhotupdate.Common.VERSION
+ import com.rnhotupdate.Common.BUNDLE_HISTORY
+ import com.rnhotupdate.SharedPrefs
++import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+-import kotlinx.coroutines.GlobalScope
++import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.delay
+ import kotlinx.coroutines.launch
+ import org.json.JSONArray
+@@ -17,9 +18,10 @@ import java.io.File
+ class CrashHandler(private val context: Context) : Thread.UncaughtExceptionHandler {
+   private val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+   private val utils: Utils = Utils(context)
++  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+   private var beginning = true
+   init {
+-    GlobalScope.launch(Dispatchers.IO) {
++    scope.launch {
+       delay(2000)
+       beginning = false
+     }
+@@ -29,6 +31,13 @@ class CrashHandler(private val context: Context) : Thread.UncaughtExceptionHandl
        val sharedPrefs = SharedPrefs(context)
        val currentPath = sharedPrefs.getString(PATH)
  
@@ -16,8 +39,35 @@ index a9d5996..9b3778d 100644
        // Try to rollback using history system
        val historyJson = sharedPrefs.getString(BUNDLE_HISTORY)
        var rolledBack = false
+@@ -68,6 +77,9 @@ class CrashHandler(private val context: Context) : Thread.UncaughtExceptionHandl
+-      val errorMessage = throwable.message ?: "Unknown error occurred"
+-      Toast.makeText(context, "Update failed: $errorMessage", Toast.LENGTH_LONG).show()
+-      GlobalScope.launch(Dispatchers.IO) {
++      Toast.makeText(
++        context,
++        "Update could not be applied. Restoring the previous version.",
++        Toast.LENGTH_LONG
++      ).show()
++      scope.launch {
+         delay(1500)
+         ProcessPhoenix.triggerRebirth(context)
+       }
+diff --git a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/OtaHotUpdateModule.kt b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/OtaHotUpdateModule.kt
+index c14d436..e920cf9 100644
+--- a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/OtaHotUpdateModule.kt
++++ b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/OtaHotUpdateModule.kt
+@@ -354,5 +354,9 @@ class OtaHotUpdateModule internal constructor(context: ReactApplicationContext)
+   @ReactMethod
+   override fun setExactBundlePath(path: String?, promise: Promise) {
++    if (path.isNullOrEmpty()) {
++      promise.resolve(false)
++      return
++    }
+     val file = File(path)
+     if (file.exists() && file.isFile) {
+       val sharedPrefs = SharedPrefs(reactApplicationContext)
 diff --git a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
-index a7821c5..49d0bed 100644
+index a7821c5..4ffb878 100644
 --- a/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
 +++ b/node_modules/react-native-ota-hot-update/android/src/main/java/com/otahotupdate/Utils.kt
 @@ -50,7 +50,7 @@ class Utils internal constructor(private val context: Context) {

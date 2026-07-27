@@ -27,9 +27,11 @@ export const StudentHeader = memo(function StudentHeader({ student, cookieHeader
               headers: cookieHeader && !student.avatarUrl.startsWith('data:') ? { Cookie: cookieHeader } : undefined,
             }}
             style={styles.avatar}
+            cachePolicy="memory-disk"
             contentFit="cover"
             onError={() => setAvatarFailed(true)}
-            transition={180}
+            recyclingKey={student.avatarUrl}
+            transition={0}
           />
         ) : (
           <View style={styles.avatarFallback}>

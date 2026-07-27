@@ -1,6 +1,10 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { CghPortalClient, isSessionExpiredError } from '../src/services/cghPortal';
+import {
+  CghPortalClient,
+  isSessionExpiredError,
+  PortalRequestError,
+} from '../src/services/cghPortal';
 import type { PortalModuleKey } from '../src/types';
 
 const PORT = Number(process.env.CGH_PROXY_PORT ?? 8787);
@@ -119,9 +123,11 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
     sendJson(res, 404, { error: 'Unknown proxy route.' });
   } catch (error) {
-    sendJson(res, isSessionExpiredError(error) ? 401 : 400, {
-      error: error instanceof Error ? error.message : 'Proxy request failed.',
-      code: isSessionExpiredError(error) ? 'SESSION_EXPIRED' : 'PORTAL_ERROR',
+    const sessionExpired = isSessionExpiredError(error);
+    const portalError = error instanceof PortalRequestError ? error : undefined;
+    sendJson(res, sessionExpired || portalError?.code === 'PORTAL_PASSWORD' || portalError?.code === 'PORTAL_STUDENT_ID' ? 401 : 400, {
+      error: 'The portal request could not be completed.',
+      code: sessionExpired ? 'SESSION_EXPIRED' : portalError?.code ?? 'PORTAL_ERROR',
     });
   }
 });

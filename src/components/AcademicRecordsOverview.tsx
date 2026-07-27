@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import {
   BookOpen,
   CalendarDays,
@@ -44,6 +44,10 @@ function SubjectsOverview({ table, summary }: { table: TableData; summary: Recor
   const totalUnits = summaryValue(summary, /total units load taken/i) || sumColumn(table, columns.totalUnits);
   const maxUnits = summaryValue(summary, /maximum units for this semester/i);
   const term = summaryValue(summary, /enrolled sy.?term/i);
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(table.rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleRows = table.rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <View style={styles.shell}>
@@ -61,10 +65,9 @@ function SubjectsOverview({ table, summary }: { table: TableData; summary: Recor
 
       <RecordCard title="Current subjects" hint="Course, units and assigned faculty.">
         <View style={[styles.recordList, width >= 720 ? styles.recordListWide : null]}>
-          {table.rows.map((row, index) => (
-            <Animated.View
+          {visibleRows.map((row, index) => (
+            <View
               key={`${cell(row, columns.code)}-${index}`}
-              entering={FadeInUp.delay(index * 45).duration(280)}
               style={[styles.subjectCard, width >= 720 ? styles.recordWide : null]}
             >
               <View style={styles.recordIcon}>
@@ -79,9 +82,10 @@ function SubjectsOverview({ table, summary }: { table: TableData; summary: Recor
                   <DetailPill label={`${cleanUnits(cell(row, columns.lecLab)) || '—'} lec/lab`} tone="purple" />
                 </View>
               </View>
-            </Animated.View>
+            </View>
           ))}
         </View>
+        {pageCount > 1 ? <Pagination page={safePage} pageCount={pageCount} onChange={setPage} /> : null}
       </RecordCard>
     </View>
   );
@@ -99,6 +103,10 @@ function ScheduleOverview({
   const { width } = useWindowDimensions();
   const columns = useMemo(() => columnsFor(table), [table]);
   const totalUnits = summaryValue(summary, /total load units/i) || sumColumn(table, columns.totalUnits);
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(table.rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleRows = table.rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <View style={styles.shell}>
@@ -116,10 +124,9 @@ function ScheduleOverview({
 
       <RecordCard title="Class schedule" hint="Only the current enrolled load is shown.">
         <View style={[styles.recordList, width >= 720 ? styles.recordListWide : null]}>
-          {table.rows.map((row, index) => (
-            <Animated.View
+          {visibleRows.map((row, index) => (
+            <View
               key={`${cell(row, columns.code)}-${index}`}
-              entering={FadeInUp.delay(index * 45).duration(280)}
               style={[styles.scheduleCard, width >= 720 ? styles.recordWide : null]}
             >
               <View style={styles.scheduleTop}>
@@ -139,9 +146,10 @@ function ScheduleOverview({
                 <Text style={styles.recordMeta} numberOfLines={2}>{cell(row, columns.faculty) || 'Faculty not yet assigned'}</Text>
                 <Text style={styles.unitsText}>{cleanUnits(cell(row, columns.totalUnits)) || '—'} units</Text>
               </View>
-            </Animated.View>
+            </View>
           ))}
         </View>
+        {pageCount > 1 ? <Pagination page={safePage} pageCount={pageCount} onChange={setPage} /> : null}
       </RecordCard>
     </View>
   );
@@ -206,9 +214,8 @@ function LedgerOverview({ table }: { table: TableData }) {
               const payment = entry.credit > 0;
               const charge = entry.debit > 0;
               return (
-                <Animated.View
+                <View
                   key={`${cell(row, columns.date)}-${cell(row, columns.particulars)}-${index}`}
-                  entering={FadeInUp.delay(index * 40).duration(260)}
                   style={[styles.ledgerCard, width >= 720 ? styles.recordWide : null]}
                 >
                   <View style={[styles.recordIcon, payment ? styles.recordIconSuccess : null]}>
@@ -229,7 +236,7 @@ function LedgerOverview({ table }: { table: TableData }) {
                       <Text style={styles.balanceText}>Balance {money(cell(row, columns.balance))}</Text>
                     </View>
                   </View>
-                </Animated.View>
+                </View>
               );
             })
           ) : (
@@ -255,6 +262,10 @@ function DuesOverview({ table, summary }: { table: TableData; summary: Record<st
   const term = summaryValue(summary, /last enrolled sy.?term|^term$/i);
   const totalRequired = sumColumn(table, columns.requiredAmount);
   const finalBalance = [...table.rows].reverse().map((row) => cell(row, columns.cumulativeBalance)).find(Boolean) ?? '0';
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(table.rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleRows = table.rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <View style={styles.shell}>
@@ -272,10 +283,9 @@ function DuesOverview({ table, summary }: { table: TableData; summary: Record<st
 
       <RecordCard title="Payment periods" hint="Amounts are shown exactly as posted by the portal.">
         <View style={[styles.recordList, width >= 720 ? styles.recordListWide : null]}>
-          {table.rows.map((row, index) => (
-            <Animated.View
+          {visibleRows.map((row, index) => (
+            <View
               key={`${cell(row, columns.paymentSchedule)}-${index}`}
-              entering={FadeInUp.delay(index * 45).duration(280)}
               style={[styles.dueCard, width >= 720 ? styles.recordWide : null]}
             >
               <View style={styles.dueTop}>
@@ -291,9 +301,10 @@ function DuesOverview({ table, summary }: { table: TableData; summary: Record<st
                 <AmountBlock label="Required" value={money(cell(row, columns.requiredAmount))} />
                 <AmountBlock label="Cumulative" value={money(cell(row, columns.cumulativeBalance))} accent />
               </View>
-            </Animated.View>
+            </View>
           ))}
         </View>
+        {pageCount > 1 ? <Pagination page={safePage} pageCount={pageCount} onChange={setPage} /> : null}
       </RecordCard>
     </View>
   );

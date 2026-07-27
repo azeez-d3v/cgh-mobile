@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "CGH Mobile",
+    "name": "Portal",
     "slug": "cgh-mobile",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "scheme": "cghmobile",
     "orientation": "portrait",
     "icon": "./assets/icon-v2.png",
@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.azeezd3v.cghmobile",
-      "versionCode": 1000001,
+      "versionCode": 1001000,
       "allowBackup": false,
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -22,7 +22,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#FDE7EF",
-        "foregroundImage": "./assets/android-icon-foreground-v2.png"
+        "foregroundImage": "./assets/portal-splash-logo.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -32,9 +32,30 @@
     "plugins": [
       "expo-image",
       "expo-font",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFF7FA",
+          "image": "./assets/portal-splash-logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "android": {
+            "imageWidth": 180
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
       "react-native-ota-hot-update",
       "./plugins/withAndroidDnsFallback",
+      "./plugins/withAndroidReleaseHardening",
       "./plugins/withAndroidReleaseSigning"
     ]
   }
