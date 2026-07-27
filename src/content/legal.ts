@@ -134,6 +134,7 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
         title: '5. Sharing',
         paragraphs: [
           'The app communicates with the official student portal to authenticate your account and retrieve the records you request. It does not intentionally sell your information or share it with advertisers.',
+          'The Android app may use encrypted DNS to resolve portal or update service domains when a network provider’s DNS is unavailable or returns an unusable result. DNS requests contain the domain being resolved, not your portal password or retrieved student records.',
           'The app may contact public GitHub-hosted files to check for and download signed software updates. Student credentials and retrieved school records are not included in those update requests.',
         ],
       },

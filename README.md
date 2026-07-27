@@ -73,6 +73,12 @@ target app version, download size, trusted host, and SHA-256 checksum before the
 native updater can install a bundle. Failed startup bundles return to the
 embedded APK bundle or a retained previous bundle.
 
+Android portal requests remain direct to CGH. The native network client resolves
+the official portal through encrypted DNS first and falls back to Android DNS;
+other hosts use Android DNS first with encrypted DNS as a recovery path. OTA
+manifests are checked concurrently through GitHub Pages and the public
+repository’s raw-content mirror.
+
 See [`docs/RELEASES.md`](docs/RELEASES.md) for release automation, required repository secrets, and the distinction between OTA-compatible changes and native changes that require a new APK.
 
 ## Data handling
@@ -80,4 +86,5 @@ See [`docs/RELEASES.md`](docs/RELEASES.md) for release automation, required repo
 - Passwords are used for portal authentication and are not intentionally persisted by the app.
 - Previously retrieved records may be cached on the device for offline access.
 - The project does not include advertising, behavioral analytics, or a maintainer-operated student database.
+- The app does not relay portal credentials or student records through a maintainer-operated proxy.
 - Local environment files, signing credentials, APK files, native build folders, and developer tooling state are excluded from Git.

@@ -10,6 +10,9 @@
 Expo is used for development and `expo prebuild`. GitHub Actions performs APK
 and OTA release work; EAS Update is not part of the release path.
 
+The Android native project includes an encrypted DNS fallback. Changes to its
+resolver, bootstrap addresses, or OkHttp integration require a new APK.
+
 ## Required private-repository secrets
 
 - `OTA_SIGNING_PRIVATE_KEY`: PKCS#8 Ed25519 private key used to sign exact
@@ -57,6 +60,11 @@ require a new APK and app-version bump.
 The target app version in the signed manifest must exactly match the installed
 APK. Version-scoped pointers keep the last compatible update available to older
 APKs after a newer APK is released.
+
+The client checks the signed pointer concurrently through GitHub Pages and the
+public repository’s raw-content mirror. A valid signed manifest from either
+location is accepted; the bundle itself is still verified by exact size and
+SHA-256 before native installation.
 
 ## APK release
 

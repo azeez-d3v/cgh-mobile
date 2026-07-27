@@ -11,6 +11,16 @@ module.exports = ({ config }) => {
   const appEnvironment = process.env.APP_VARIANT === 'development' ? 'development' : 'production';
   const isDevelopment = appEnvironment === 'development';
   const productionPackage = baseConfig.android?.package ?? 'com.azeezd3v.cghmobile';
+  const otaBaseUrls = (
+    process.env.EXPO_PUBLIC_OTA_BASE_URLS ||
+    [
+      'https://azeez-d3v.github.io/cgh-mobile-downloads/ota',
+      'https://raw.githubusercontent.com/azeez-d3v/cgh-mobile-downloads/production/ota',
+    ].join(',')
+  )
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   return {
     ...config,
@@ -24,7 +34,8 @@ module.exports = ({ config }) => {
       ...baseConfig.extra,
       appEnvironment,
       ota: {
-        baseUrl: process.env.EXPO_PUBLIC_OTA_BASE_URL || 'https://azeez-d3v.github.io/cgh-mobile-downloads/ota',
+        baseUrl: otaBaseUrls[0],
+        baseUrls: otaBaseUrls,
         publicKey: process.env.EXPO_PUBLIC_OTA_PUBLIC_KEY || otaPublicKey,
       },
     },

@@ -55,6 +55,7 @@ type ExpoExtra = {
   appEnvironment?: string;
   ota?: {
     baseUrl?: string;
+    baseUrls?: string[];
     publicKey?: string;
   };
 };
@@ -83,24 +84,28 @@ export async function checkForOtaUpdate(): Promise<OtaCheckResult> {
   assertSupported();
   const config = otaConfig();
   const channel = otaChannel();
-  // Keep each native app version on its own pointer so older APKs retain
-  // their final compatible update after a newer APK is released.
-  const manifestUrl = `${config.baseUrl}/${channel}/${encodeURIComponent(nativeAppVersion())}/update.json`;
   const cacheBuster = `t=${Date.now()}`;
-  const manifestText = await fetchText(`${manifestUrl}?${cacheBuster}`, true);
   const currentBundleVersion = Number(await nativeModule().getCurrentVersion(0)) || 0;
   const checkedAt = new Date().toISOString();
+  const mirrorResults = await Promise.allSettled(
+    config.baseUrls.map((baseUrl) =>
+      readManifestMirror(baseUrl, channel, cacheBuster, config.publicKey),
+    ),
+  );
+  const manifest = mirrorResults.find(
+    (result): result is PromiseFulfilledResult<OtaManifest> =>
+      result.status === 'fulfilled' && result.value !== undefined,
+  )?.value;
 
-  if (manifestText === undefined) {
+  if (!manifest) {
+    const atLeastOneMirrorResponded = mirrorResults.some(
+      (result) => result.status === 'fulfilled',
+    );
+    if (!atLeastOneMirrorResponded) {
+      throw new Error('No update service mirror could be reached.');
+    }
     return { available: false, currentBundleVersion, checkedAt };
   }
-
-  const signatureText = await fetchText(`${manifestUrl}.sig?${cacheBuster}`);
-  if (!signatureText) throw new Error('The signed update manifest is incomplete.');
-
-  verifyManifestSignature(manifestText, signatureText.trim(), config.publicKey);
-  const manifest = parseManifest(manifestText);
-  validateManifest(manifest, channel);
 
   const available = manifest.bundleVersion > currentBundleVersion;
   await AsyncStorage.setItem(
@@ -197,15 +202,45 @@ export async function readLastOtaCheck() {
 
 function otaConfig() {
   const extra = Constants.expoConfig?.extra as ExpoExtra | undefined;
-  const baseUrl = extra?.ota?.baseUrl?.replace(/\/+$/, '');
+  const baseUrls = [
+    ...(extra?.ota?.baseUrls ?? []),
+    ...(extra?.ota?.baseUrl ? [extra.ota.baseUrl] : []),
+  ]
+    .map((value) => value.replace(/\/+$/, ''))
+    .filter((value, index, values) => value && values.indexOf(value) === index);
   const publicKey = extra?.ota?.publicKey?.trim();
-  if (!baseUrl || !publicKey) throw new Error('App update configuration is incomplete.');
-  if (!baseUrl.startsWith('https://')) throw new Error('App updates require HTTPS.');
-  return { baseUrl, publicKey };
+  if (!baseUrls.length || !publicKey) {
+    throw new Error('App update configuration is incomplete.');
+  }
+  if (!baseUrls.every((baseUrl) => baseUrl.startsWith('https://'))) {
+    throw new Error('App updates require HTTPS.');
+  }
+  return { baseUrls, publicKey };
 }
 
 function lastCheckKey() {
   return `cgh.ota.last-check.v1.${otaChannel()}.${nativeAppVersion()}`;
+}
+
+async function readManifestMirror(
+  baseUrl: string,
+  channel: OtaChannel,
+  cacheBuster: string,
+  publicKey: string,
+): Promise<OtaManifest | undefined> {
+  // Keep each native app version on its own pointer so older APKs retain
+  // their final compatible update after a newer APK is released.
+  const manifestUrl = `${baseUrl}/${channel}/${encodeURIComponent(nativeAppVersion())}/update.json`;
+  const manifestText = await fetchText(`${manifestUrl}?${cacheBuster}`, true);
+  if (manifestText === undefined) return undefined;
+
+  const signatureText = await fetchText(`${manifestUrl}.sig?${cacheBuster}`);
+  if (!signatureText) throw new Error('The signed update manifest is incomplete.');
+  verifyManifestSignature(manifestText, signatureText.trim(), publicKey);
+
+  const manifest = parseManifest(manifestText);
+  validateManifest(manifest, channel);
+  return manifest;
 }
 
 function verifyManifestSignature(manifestText: string, signatureBase64: string, publicKeyBase64: string) {
