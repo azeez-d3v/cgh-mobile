@@ -54,6 +54,10 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # Production is not the repository's default branch, so setup-gradle
+          # would otherwise restore caches without saving this build's outputs.
+          cache-read-only: "false"
 
       - name: Install dependencies
         run: npm ci
@@ -66,6 +70,16 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install
 
+      - name: Restore native compiler cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            android/app/.cxx
+            node_modules/expo-modules-core/android/.cxx
+            node_modules/react-native-reanimated/android/.cxx
+            node_modules/react-native-worklets/android/.cxx
+          key: portal-cxx-v1-${{ runner.os }}-${{ env.APP_VARIANT }}-${{ hashFiles('package-lock.json', 'patches/*.patch', 'plugins/*.js') }}
+
       - name: Restore release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -73,7 +87,7 @@ jobs:
 
       - name: Build signed production APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --build-cache --parallel
 
       - name: Verify and checksum APK
         run: |

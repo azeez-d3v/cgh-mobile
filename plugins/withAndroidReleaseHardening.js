@@ -25,6 +25,13 @@ function withAndroidReleaseHardening(config) {
   config = withGradleProperties(config, (configWithProperties) => {
     setGradleProperty(
       configWithProperties.modResults,
+      'org.gradle.jvmargs',
+      '-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8',
+    );
+    setGradleProperty(configWithProperties.modResults, 'org.gradle.parallel', 'true');
+    setGradleProperty(configWithProperties.modResults, 'org.gradle.caching', 'true');
+    setGradleProperty(
+      configWithProperties.modResults,
       'android.r8.optimizedResourceShrinking',
       'true',
     );

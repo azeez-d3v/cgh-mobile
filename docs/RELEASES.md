@@ -89,6 +89,20 @@ prevents future OTA manifests from targeting the wrong APK. GitHub Actions:
 The public download site resolves the latest non-prerelease APK release. OTA
 releases are prereleases so they cannot replace the website’s APK target.
 
+## Android build caching
+
+APK workflows enable Gradle's build cache and parallel project execution. The
+production workflow explicitly writes Gradle state even though `production` is
+not the repository's default branch. Selected CMake outputs for the app, Expo
+modules, Reanimated, and Worklets are cached after prebuild and keyed by the
+dependency lockfile, native compatibility patches, config plugins, platform,
+and app variant.
+
+The first build after changing native dependencies or plugins remains a cold
+build. Later compatible builds can reuse compiled native objects and cacheable
+Gradle task outputs. Do not add keystores, generated APKs, environment files, or
+R8 mappings to cache paths.
+
 ## Rollback
 
 The updater retains up to three bundles. If a newly selected OTA bundle crashes

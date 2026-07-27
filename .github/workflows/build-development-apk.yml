@@ -39,6 +39,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: "false"
 
       - name: Install and validate
         run: |
@@ -48,9 +50,19 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean --no-install
 
+      - name: Restore native compiler cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            android/app/.cxx
+            node_modules/expo-modules-core/android/.cxx
+            node_modules/react-native-reanimated/android/.cxx
+            node_modules/react-native-worklets/android/.cxx
+          key: portal-cxx-v1-${{ runner.os }}-${{ env.APP_VARIANT }}-${{ hashFiles('package-lock.json', 'patches/*.patch', 'plugins/*.js') }}
+
       - name: Build development APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --build-cache --parallel
 
       - name: Upload development APK
         uses: actions/upload-artifact@v7
