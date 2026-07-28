@@ -37,12 +37,12 @@ jobs:
       ORG_GRADLE_PROJECT_CGH_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - name: Checkout production
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: production
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
 
@@ -71,7 +71,7 @@ jobs:
         run: npx expo prebuild --platform android --clean --no-install
 
       - name: Restore native compiler cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             android/app/.cxx
@@ -101,7 +101,7 @@ jobs:
           sha256sum CGH-Mobile.apk > CGH-Mobile.apk.sha256
 
       - name: Archive private R8 mapping
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: r8-mapping-v${{ inputs.version }}
           path: android/app/build/outputs/mapping/release/mapping.txt
