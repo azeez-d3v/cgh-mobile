@@ -38,7 +38,7 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
     steps:
       - name: Checkout development source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: development
 
@@ -54,7 +54,7 @@ jobs:
         run: npm run validate
 
       - name: Checkout public update pointer
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: azeez-d3v/cgh-mobile-downloads
           ref: production
