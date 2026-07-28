@@ -462,7 +462,7 @@ function LoginScreen({
                   <GraduationCap size={30} color={colors.white} strokeWidth={2.4} />
                 </LinearGradient>
                 <View style={styles.loginBrandCopy}>
-                  <Text style={styles.appName}>CGH Mobile</Text>
+                  <Text style={styles.appName}>Portal</Text>
                   <Text style={styles.loginBrandText}>Student Portal</Text>
                 </View>
               </View>

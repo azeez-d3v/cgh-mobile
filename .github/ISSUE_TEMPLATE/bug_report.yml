@@ -1,0 +1,102 @@
+name: Bug report
+description: Report a reproducible problem in the Portal Android app.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not include a Student ID, password, cookie, real portal HTML, or an unredacted student-record screenshot.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that the official portal was available.
+          required: true
+        - label: I searched open issues for the same problem.
+          required: true
+        - label: This report contains no private student or account information.
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Portal version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Samsung A13, Android 14"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected area
+      options:
+        - Sign in
+        - Home
+        - Personal Info
+        - Subjects Enrolled
+        - Enrolled Load Schedule
+        - Ledger
+        - Periodic Dues
+        - Checklist
+        - Settings
+        - App updates
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem without copying private values from the portal.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network state
+      options:
+        - Wi-Fi, official portal also worked
+        - Mobile data, official portal also worked
+        - Official portal did not work
+        - Offline or cached copy
+        - Not relevant
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional safe context
+      description: Optional. Redact all names, IDs, schedules, grades, balances, addresses, and account details.

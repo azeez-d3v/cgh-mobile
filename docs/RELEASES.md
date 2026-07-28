@@ -13,7 +13,7 @@ and OTA release work; EAS Update is not part of the release path.
 The Android native project includes an encrypted DNS fallback. Changes to its
 resolver, bootstrap addresses, or OkHttp integration require a new APK.
 
-## Required private-repository secrets
+## Required repository secrets
 
 - `OTA_SIGNING_PRIVATE_KEY`: PKCS#8 Ed25519 private key used to sign exact
   `update.json` bytes.
@@ -27,6 +27,10 @@ resolver, bootstrap addresses, or OkHttp integration require a new APK.
 The OTA public key is safe to commit and lives in
 `config/ota-public-key.txt`. Signing and keystore private material must stay in
 GitHub Secrets and the ignored local `.secrets/` directory.
+
+The source repository is public. Put release secrets in the protected
+`development` or `production` GitHub environment as appropriate, limit who can
+approve those environments, and never expose secrets to pull-request jobs.
 
 ## Development APK
 

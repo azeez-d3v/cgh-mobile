@@ -9,7 +9,7 @@ on:
       notes:
         description: Release notes
         required: true
-        default: CGH Mobile production release
+        default: Portal production release
 
 permissions:
   contents: read
@@ -111,9 +111,9 @@ jobs:
       - name: Publish APK to public download repository
         run: |
           gh release create "v${RELEASE_VERSION}" \
-            "CGH-Mobile.apk#CGH Mobile v${RELEASE_VERSION}" \
+            "CGH-Mobile.apk#Portal v${RELEASE_VERSION}" \
             "CGH-Mobile.apk.sha256#SHA-256 checksum" \
             --repo azeez-d3v/cgh-mobile-downloads \
-            --title "CGH Mobile v${RELEASE_VERSION}" \
+            --title "Portal v${RELEASE_VERSION}" \
             --notes "${RELEASE_NOTES}" \
             --latest

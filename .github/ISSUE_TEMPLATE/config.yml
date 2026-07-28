@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/azeez-d3v/cgh-mobile/security/advisories/new
+    about: Use the private form for security issues or possible student-data exposure.
+  - name: Official portal or record support
+    url: https://automate.cghc.edu.ph/PARENTS_STUDENTS/parents_student_index.jsp
+    about: Use the official service for account recovery and corrections to school records.

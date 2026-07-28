@@ -20,12 +20,12 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
     shortTitle: 'Terms',
     effectiveDate: '27 July 2026',
     introduction:
-      'These Terms govern your use of CGH Mobile, an unofficial, independently developed, read-only companion for viewing information available through the CGH SchoolAutomate student portal.',
+      'These Terms govern your use of Portal, an unofficial, independently developed, read-only companion for viewing information available through the CGH SchoolAutomate student portal.',
     sections: [
       {
         title: '1. Unofficial application',
         paragraphs: [
-          'CGH Mobile is not an official application of CGH, SchoolAutomate, or their service providers. The project is not sponsored, endorsed, operated, or guaranteed by those organizations.',
+          'Portal is not an official application of CGH, SchoolAutomate, or their service providers. The project is not sponsored, endorsed, operated, or guaranteed by those organizations.',
           'Names, portal content, student records, and related marks remain the property of their respective owners. The official SchoolAutomate portal remains the authoritative service.',
         ],
       },
@@ -45,7 +45,7 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
       {
         title: '3. Actions the app does not perform',
         paragraphs: [
-          'CGH Mobile does not enroll or drop subjects, submit forms, change personal information, post payments, issue receipts, modify grades, certify records, or perform other write operations against the portal.',
+          'Portal does not enroll or drop subjects, submit forms, change personal information, post payments, issue receipts, modify grades, certify records, or perform other write operations against the portal.',
           'For corrections, payments, enrollment changes, official copies, or time-sensitive transactions, use the official portal or contact the appropriate school office.',
         ],
       },
@@ -98,12 +98,12 @@ export const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
     shortTitle: 'Privacy',
     effectiveDate: '27 July 2026',
     introduction:
-      'This Privacy Policy summarizes the limited information needed to provide CGH Mobile’s read-only student portal features.',
+      'This Privacy Policy summarizes the limited information needed to provide Portal’s read-only student portal features.',
     sections: [
       {
         title: '1. Privacy summary',
         paragraphs: [
-          'CGH Mobile does not use advertising, behavioral analytics, or a maintainer-operated student database. The maintainer does not sell your information.',
+          'Portal does not use advertising, behavioral analytics, or a maintainer-operated student database. The maintainer does not sell your information.',
           'Your password is used only to sign in and is not intentionally saved by the app. Previously retrieved records may be kept on your device for offline access.',
         ],
       },

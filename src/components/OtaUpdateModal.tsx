@@ -51,7 +51,7 @@ export const OtaUpdateModal = memo(function OtaUpdateModal({ ota }: { ota: OtaCo
             {ota.message ??
               (downloading
                 ? 'The signed update is downloading and will be verified before installation.'
-                : 'Install the latest verified CGH Mobile improvements without downloading another APK.')}
+                : 'Install the latest verified Portal improvements without downloading another APK.')}
           </Text>
 
           {manifest && !failed ? (
